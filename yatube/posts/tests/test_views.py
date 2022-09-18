@@ -27,58 +27,55 @@ class PostsPagesTests(TestCase):
             group=cls.group
         )
 
+    def setUp(self):
+        self.authorized_author = Client()
+        self.authorized_author.force_login(self.author)
 
-def setUp(self):
-    self.authorized_author = Client()
-    self.authorized_author.force_login(self.author)
+    def test_correct_page_context_guest_client(self):
+        """Проверка количества постов на первой и второй страницах."""
+        pages: tuple = (reverse('posts:index'),
+                        reverse('posts:profile',
+                                kwargs={'username': f'{self.user.username}'}),
+                        reverse('posts:group_list',
+                                kwargs={'slug': f'{self.group.slug}'}))
+        for page in pages:
+            response1 = self.guest_client.get(page)
+            response2 = self.guest_client.get(page + '?page=2')
+            count_posts1 = len(response1.context['page_obj'])
+            count_posts2 = len(response2.context['page_obj'])
+            error_name1 = (f'Ошибка: {count_posts1} постов,'
+                           f' должно {settings.FIRST_OF_POSTS}')
+            error_name2 = (f'Ошибка: {count_posts2} постов,'
+                           f'должно {TEST_OF_POST -settings.FIRST_OF_POSTS}')
+            self.assertEqual(count_posts1,
+                             settings.FIRST_OF_POSTS,
+                             error_name1)
+            self.assertEqual(count_posts2,
+                             TEST_OF_POST - settings.FIRST_OF_POSTS,
+                             error_name2)
 
-
-def test_correct_page_context_guest_client(self):
-    """Проверка количества постов на первой и второй страницах."""
-    pages: tuple = (reverse('posts:index'),
-                    reverse('posts:profile',
-                            kwargs={'username': f'{self.user.username}'}),
-                    reverse('posts:group_list',
-                            kwargs={'slug': f'{self.group.slug}'}))
-    for page in pages:
-        response1 = self.guest_client.get(page)
-        response2 = self.guest_client.get(page + '?page=2')
-        count_posts1 = len(response1.context['page_obj'])
-        count_posts2 = len(response2.context['page_obj'])
-        error_name1 = (f'Ошибка: {count_posts1} постов,'
-                       f' должно {settings.FIRST_OF_POSTS}')
-        error_name2 = (f'Ошибка: {count_posts2} постов,'
-                       f'должно {TEST_OF_POST -settings.FIRST_OF_POSTS}')
-        self.assertEqual(count_posts1,
-                         settings.FIRST_OF_POSTS,
-                         error_name1)
-        self.assertEqual(count_posts2,
-                         TEST_OF_POST - settings.FIRST_OF_POSTS,
-                         error_name2)
-
-
-def test_correct_page_context_authorized_client(self):
-    """Проверка контекста страниц авторизованного пользователя."""
-    pages = [reverse('posts:index'),
-             reverse('posts:profile',
-             kwargs={'username': f'{self.user.username}'}),
-             reverse('posts:group_list',
-             kwargs={'slug': f'{self.group.slug}'})]
-    for page in pages:
-        response1 = self.authorized_client.get(page)
-        response2 = self.authorized_client.get(page + '?page=2')
-        count_posts1 = len(response1.context['page_obj'])
-        count_posts2 = len(response2.context['page_obj'])
-        error_name1 = (f'Ошибка: {count_posts1} постов,'
-                       f' должно {settings.FIRST_OF_POSTS}')
-        error_name2 = (f'Ошибка: {count_posts2} постов,'
-                       f'должно {TEST_OF_POST -settings.FIRST_OF_POSTS}')
-        self.assertEqual(count_posts1,
-                         settings.FIRST_OF_POSTS,
-                         error_name1)
-        self.assertEqual(count_posts2,
-                         TEST_OF_POST - settings.FIRST_OF_POSTS,
-                         error_name2)
+    def test_correct_page_context_authorized_client(self):
+        """Проверка контекста страниц авторизованного пользователя."""
+        pages = [reverse('posts:index'),
+                 reverse('posts:profile',
+                 kwargs={'username': f'{self.user.username}'}),
+                 reverse('posts:group_list',
+                 kwargs={'slug': f'{self.group.slug}'})]
+        for page in pages:
+            response1 = self.authorized_client.get(page)
+            response2 = self.authorized_client.get(page + '?page=2')
+            count_posts1 = len(response1.context['page_obj'])
+            count_posts2 = len(response2.context['page_obj'])
+            error_name1 = (f'Ошибка: {count_posts1} постов,'
+                           f' должно {settings.FIRST_OF_POSTS}')
+            error_name2 = (f'Ошибка: {count_posts2} постов,'
+                           f'должно {TEST_OF_POST -settings.FIRST_OF_POSTS}')
+            self.assertEqual(count_posts1,
+                             settings.FIRST_OF_POSTS,
+                             error_name1)
+            self.assertEqual(count_posts2,
+                             TEST_OF_POST - settings.FIRST_OF_POSTS,
+                             error_name2)
 
 
 class ViewsTest(TestCase):
