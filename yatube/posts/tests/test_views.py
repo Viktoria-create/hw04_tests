@@ -1,13 +1,11 @@
-from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 from django import forms
 
-from ..models import Post, Group
+from ..models import Post, Group, User
 
 TEST_OF_POST: int = 10
 FIRST_OF_POSTS: int = 10
-User = get_user_model()
 
 
 class PostsPagesTests(TestCase):
@@ -88,27 +86,6 @@ class ViewsTest(TestCase):
             with self.subTest(value=value):
                 form_field = response.context.get('form').fields.get(value)
                 self.assertIsInstance(form_field, expected)
-
-    def test_post_added_correctly(self):
-        """Пост при создании добавлен корректно."""
-        post = Post.objects.create(
-            text='Проверка как добавился текст',
-            author=self.user,
-            group=self.group)
-        response_index = self.authorized_client.get(
-            reverse('posts:index'))
-        response_group = self.authorized_client.get(
-            reverse('posts:group_list',
-                    kwargs={'slug': f'{self.group.slug}'}))
-        response_profile = self.authorized_client.get(
-            reverse('posts:profile',
-                    kwargs={'username': f'{self.user.username}'}))
-        index = response_index.context['page_obj']
-        group = response_group.context['page_obj']
-        profile = response_profile.context['page_obj']
-        self.assertIn(post, index, 'поста нет на главной')
-        self.assertIn(post, group, 'поста нет в профиле')
-        self.assertIn(post, profile, 'поста нет в группе')
 
     def test_post_added_correctly_user2(self):
         """Пост при создании не добавляется другому пользователю

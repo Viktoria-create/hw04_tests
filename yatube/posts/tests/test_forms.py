@@ -1,11 +1,8 @@
 from http import HTTPStatus
 from django.test import Client, TestCase
 from django.urls import reverse
-from django.contrib.auth import get_user_model
 
-from posts.models import Post, Group
-
-User = get_user_model()
+from posts.models import Post, Group, User
 
 
 class PostFormTests(TestCase):
@@ -55,16 +52,24 @@ class PostFormTests(TestCase):
         error_name2 = 'Пользователь не может оставить поле нулевым'
         self.assertNotEqual(old_text.group, form_data['group'], error_name2)
 
-    def test_reddirect_guest_client(self):
-        """Проверка редиректа неавторизованного пользователя."""
+    def test_can_edit_post(self):
+        '''Проверка прав редактирования'''
         self.post = Post.objects.create(text='Тестовый текст',
                                         author=self.user,
                                         group=self.group)
-        form_data = {'text': 'Текст записанный в форму'}
-        response = self.guest_client.post(
+        self.group2 = Group.objects.create(title='Тестовая группа2',
+                                           slug='test-group2',
+                                           description='Описание')
+        form_data = {'text': 'Текст записанный в форму',
+                     'group': self.group2.id}
+        response = self.authorized_client.post(
             reverse('posts:post_edit', kwargs={'post_id': self.post.id}),
             data=form_data,
             follow=True)
         self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertRedirects(response,
-                             f'/auth/login/?next=/posts/{self.post.id}/edit/')
+        error_name1 = 'Данные поста не совпадают'
+        self.assertTrue(Post.objects.filter(id=self.post.id,
+                                            group=self.group2.id,
+                                            author=self.user,
+                                            pub_date=self.post.pub_date
+                                            ).exists(), error_name1)

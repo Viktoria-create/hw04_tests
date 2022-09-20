@@ -1,10 +1,8 @@
-from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from http import HTTPStatus
+from django.urls import reverse
 
-from ..models import Group, Post
-
-User = get_user_model()
+from ..models import Group, Post, User
 
 
 class PostURLTests(TestCase):
@@ -44,18 +42,23 @@ class PostURLTests(TestCase):
             response = self.guest_client.get(page)
             self.assertRedirects(response, value)
 
-    def test_urls_authorized_client(self):
-        """Доступ авторизованного пользователя"""
-        pages: tuple = ('/create/',
-                        f'/posts/{self.post.id}/edit/')
-    # проверяем доступ до страниц методом assertEqual
-        for page in pages:
-            response = self.authorized_client.get(page)
-            error_name = f'Ошибка: нет доступа к странице {page}'
-            self.assertEqual(response.status_code, HTTPStatus.OK, error_name)
+    def test_reddirect_guest_client(self):
+        """Проверка редиректа неавторизованного пользователя."""
+        self.post = Post.objects.create(text='Тестовый текст',
+                                        author=self.user,
+                                        group=self.group)
+        form_data = {'text': 'Текст записанный в форму'}
+        response = self.guest_client.post(
+            reverse('posts:post_edit', kwargs={'post_id': self.post.id}),
+            data=form_data,
+            follow=True)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertRedirects(response,
+                             f'/auth/login/?next=/posts/{self.post.id}/edit/')
 
-    def test_urls_uses_correct_template(self):
+    def test_urls_uses_correct_template_authorized_client(self):
         """URL-адрес использует соответствующий шаблон."""
+        """Доступ авторизованного пользователя"""
         templates_url_names: dict = {
             '/': 'posts/index.html',
             f'/group/{self.group.slug}/': 'posts/group_list.html',
@@ -63,9 +66,12 @@ class PostURLTests(TestCase):
             f'/posts/{self.post.id}/': 'posts/post_detail.html',
             '/create/': 'posts/create_post.html',
             f'/posts/{self.post.id}/edit/': 'posts/create_post.html'}
-    # Проверка полученой страницы методом assertTemplateUsed.
+        page: tuple = ('/create/',
+                       f'/posts/{self.post.id}/edit/')
+        # Проверка полученой страницы методом assertTemplateUsed.
         for adress, template in templates_url_names.items():
             with self.subTest(adress=adress):
                 response = self.authorized_client.get(adress)
+                error_name = f'Ошибка: нет доступа к странице {page}'
                 error_name = f'Ошибка: {adress} ожидал шаблон {template}'
                 self.assertTemplateUsed(response, template, error_name)
