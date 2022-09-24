@@ -37,7 +37,7 @@ class PostURLTests(TestCase):
         url1 = '/auth/login/?next=/create/'
         url2 = f'/auth/login/?next=/posts/{self.post.id}/edit/'
         pages = {'/create/': url1, f'/posts/{self.post.id}/edit/': url2}
-    # Проверяем редирект каждой страницы методом assertRedirects
+    # Проверяем редирект каждой страницы методом assertRedirects.
         for page, value in pages.items():
             response = self.guest_client.get(page)
             self.assertRedirects(response, value)
@@ -59,19 +59,18 @@ class PostURLTests(TestCase):
     def test_urls_uses_correct_template_authorized_client(self):
         """URL-адрес использует соответствующий шаблон."""
         """Доступ авторизованного пользователя"""
-        templates_url_names: dict = {
-            '/': 'posts/index.html',
-            f'/group/{self.group.slug}/': 'posts/group_list.html',
-            f'/profile/{self.user.username}/': 'posts/profile.html',
-            f'/posts/{self.post.id}/': 'posts/post_detail.html',
-            '/create/': 'posts/create_post.html',
-            f'/posts/{self.post.id}/edit/': 'posts/create_post.html'}
-        page: tuple = ('/create/',
-                       f'/posts/{self.post.id}/edit/')
-        # Проверка полученой страницы методом assertTemplateUsed.
-        for adress, template in templates_url_names.items():
-            with self.subTest(adress=adress):
-                response = self.authorized_client.get(adress)
-                error_name = f'Ошибка: нет доступа к странице {page}'
-                error_name = f'Ошибка: {adress} ожидал шаблон {template}'
-                self.assertTemplateUsed(response, template, error_name)
+        templates_url_names = {
+            '/': ('posts/index.html', HTTPStatus.OK),
+            f'/group/{self.group.slug}/':
+            ('posts/group_list.html', HTTPStatus.OK),
+            f'/profile/{self.user.username}/':
+            ('posts/profile.html', HTTPStatus.OK),
+            f'/posts/{self.post.id}/':
+            ('posts/post_detail.html', HTTPStatus.OK),
+            f'/posts/{self.post.id}/edit/':
+            ('posts/create_post.html', HTTPStatus.FOUND),
+            '/create/': ('posts/create_post.html', HTTPStatus.FOUND)}
+        for address, template in templates_url_names.items():
+            with self.subTest(address=address):
+                response = self.guest_client.get(address)
+                self.assertEqual(response.status_code, template[1])

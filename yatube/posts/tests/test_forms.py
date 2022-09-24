@@ -53,23 +53,70 @@ class PostFormTests(TestCase):
         self.assertNotEqual(old_text.group, form_data['group'], error_name2)
 
     def test_can_edit_post(self):
-        '''Проверка прав редактирования'''
-        self.post = Post.objects.create(text='Тестовый текст',
-                                        author=self.user,
-                                        group=self.group)
-        self.group2 = Group.objects.create(title='Тестовая группа2',
-                                           slug='test-group2',
-                                           description='Описание')
-        form_data = {'text': 'Текст записанный в форму',
-                     'group': self.group2.id}
+        """Проверка прав редактирования"""
+        old_text = Post.objects.create(
+            text='Тестовый текст',
+            author=self.user,
+            group=self.group
+            )
+        group2 = Group.objects.create(
+            title='Тестовая группа2',
+            slug='test_group',
+            description='Описание'
+            )
+        form_data = {
+            'text': 'Текст записанный в форму',
+            'group': group2.id
+            }
         response = self.authorized_client.post(
-            reverse('posts:post_edit', kwargs={'post_id': self.post.id}),
+            reverse('posts:post_edit', kwargs={'post_id': old_text.id}),
             data=form_data,
-            follow=True)
+            follow=True
+            )
+        self.assertRedirects(
+            response,
+            reverse('posts:post_detail', kwargs={'post_id': old_text.id}),
+            )
+        self.assertTrue(
+            Post.objects.filter(
+            text=form_data['text'],
+            group=group2.id,
+            ).exists(),
+            f'Не найдена тестовая запись {form_data ["text"]} в БД'
+            )
+        # не авторизованный пользователь не может изменить содержание поста'
+        form_data = {
+            'text': 'Неавторизованный текст записанный в форму',
+            'group': group2.id
+            }
+        response = self.guest_client.post(
+            reverse('posts:post_edit', kwargs={'post_id': old_text.id}),
+            data=form_data,
+            follow=True
+            )
+        self.assertRedirects(
+            response,
+            '/auth/login/?next=/posts/1/edit/'
+            )
+        self.assertFalse(
+            Post.objects.filter(
+            text=form_data['text'],        
+            group=group2.id,
+            ).exists(),
+            f'записи {form_data ["text"]} в БД быть не должно'
+            )
+
+    def test_no_edit_post(self):
+        """Проверка запрета добавления поста в базу данных
+           не авторизованого пользователя."""
+        posts_count = Post.objects.count()
+        form_data = {'text': 'Текст записанный в форму',
+                     'group': self.group.id}
+        response = self.guest_client.post(reverse('posts:post_create'),
+                                          data=form_data,
+                                          follow=True)
         self.assertEqual(response.status_code, HTTPStatus.OK)
-        error_name1 = 'Данные поста не совпадают'
-        self.assertTrue(Post.objects.filter(id=self.post.id,
-                                            group=self.group2.id,
-                                            author=self.user,
-                                            pub_date=self.post.pub_date
-                                            ).exists(), error_name1)
+        error_name2 = 'Поcт добавлен в базу данных по ошибке'
+        self.assertNotEqual(Post.objects.count(),
+                            posts_count + 1,
+                            error_name2)

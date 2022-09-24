@@ -105,3 +105,20 @@ class ViewsTest(TestCase):
         self.assertEqual(group, posts_count, 'поста нет в другой группе')
         self.assertNotIn(post, profile,
                          'поста нет в группе другого пользователя')
+
+
+class PaginatorViewsTest(TestCase):
+
+    def setUp(self):
+        self.guest_client = Client()
+        self.user = User.objects.create_user(username='auth')
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+        self.group = Group.objects.create(title='Тестовая группа',
+                                          slug='test_group')
+        bulk_post: list = []
+        for i in range(TEST_OF_POST):
+            bulk_post.append(Post(text=f'Тестовый текст {i}',
+                                  group=self.group,
+                                  author=self.user))
+        Post.objects.bulk_create(bulk_post)
